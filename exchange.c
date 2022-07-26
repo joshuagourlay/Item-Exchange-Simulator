@@ -4,7 +4,7 @@
     facilitate the buy and sell orders of a single product through
     maintaining and updating buy and sell order stack data structures.
     In the future, the plan is to integrate it with a database and
-	expand it to handle multiple items.
+	expand it to handle multiple items. 
 */
 
 #include <stdio.h>
