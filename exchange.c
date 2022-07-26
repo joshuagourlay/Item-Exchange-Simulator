@@ -3,9 +3,8 @@
 	Description: The purpose of this program is to successfully
     facilitate the buy and sell orders of a single product through
     maintaining and updating buy and sell order stack data structures.
-    In the future, the plan is to expand it into processing multiple
-    items and to add an API that holds stock data for a simulated trading
-    experience.
+    In the future, the plan is to integrate it with a database and
+	expand it to handle multiple items.
 */
 
 #include <stdio.h>
