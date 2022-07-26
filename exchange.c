@@ -3,8 +3,9 @@
 	Description: The purpose of this program is to successfully
     facilitate the buy and sell orders of a single product through
     maintaining and updating buy and sell order stack data structures.
-    In the future, the plan is to integrate it with a database and
-	expand it to handle multiple items. 
+    In the future, the plan is to expand it into processing multiple
+    items and to add an API that holds stock data for a simulated trading
+    experience.
 */
 
 #include <stdio.h>
@@ -35,7 +36,7 @@ struct orders {
 struct orders * create_order(char *type);
 struct orders * update_orders(struct orders *orders, struct orders *new_order);
 struct orders * clear_up_to_target(struct orders *orders, struct orders *target);
-void print_all_orders(struct orders *orders);
+void print_all_orders(struct orders *orders, char *type);
 void clear_all(struct orders *orders);
 int read_line(char str[], int n);
 void help();
@@ -49,12 +50,12 @@ void help();
  **********************************************************/
 int main() {
 	char code;
-    int choice;
 
 	struct orders *buy_orders = NULL;
     struct orders *sell_orders = NULL;
     struct orders *new_order = NULL;
 
+    printf("\n");
 	help();
 	printf("\n");
 
@@ -78,23 +79,8 @@ int main() {
 				sell_orders = update_orders(sell_orders, new_order);
 				break;
             case 'p':
-                printf("\n");
-                printf("Would you like to display the buy orders or sell orders?\n");
-                printf("\t1). Buy\n");
-                printf("\t2). Sell\n");
-                printf("Enter your choice: ");
-                scanf("%d", &choice);
-                while (choice != 1 && choice != 2) {
-                    printf("Invalid choice. Please type 1 or 2.\n");
-                    printf("Enter your choice: ");
-                    scanf("%d", &choice);
-                }
-                if (choice == 1) {
-                    print_all_orders(buy_orders);
-                }
-                else {
-                    print_all_orders(sell_orders);
-                }
+                print_all_orders(buy_orders, "Buy");
+                print_all_orders(sell_orders, "Sell");
 				break;
 			case 'h':
 				help();
@@ -127,7 +113,7 @@ struct orders * create_order(char *type) {
     struct orders * new_order = malloc(sizeof(struct orders));
     if (new_order == NULL) {
 		printf("malloc failed in create_order\n");
-		return NULL;
+		return new_order;
 	}
     printf("Enter your username: ");
     read_line(new_order -> username, NAME_LEN);
@@ -138,6 +124,7 @@ struct orders * create_order(char *type) {
     new_order -> total = new_order -> price * new_order -> quantity;
     strcpy(new_order -> type, type);
     new_order -> next = NULL;
+    printf("\n");
     return new_order;
 }
 
@@ -145,14 +132,17 @@ struct orders * update_orders(struct orders *orders, struct orders *new_order) {
     struct orders *curr;
     struct orders *prev;
 
-    if (orders == NULL) {
-        return new_order;
-    }
     if (new_order == NULL) {
         return orders;
     }
     if (new_order -> total == 0) {
+        printf("%s's order has been completed\n", new_order -> username);
+        free(new_order);
         return orders;
+    }
+    printf("%s's order has been placed for %.2lf @ $%.2lf\n", new_order -> username, new_order -> quantity, new_order -> price);
+    if (orders == NULL) {
+        return new_order;
     }
     if (strcmp(new_order -> type, "buy") == 0) {
         // iterate through buy orders until you find its priority
@@ -196,38 +186,57 @@ struct orders * update_orders(struct orders *orders, struct orders *new_order) {
 
 struct orders * clear_up_to_target(struct orders *orders, struct orders *target) {
     struct orders *p;
-	while (orders != NULL && orders -> price <= target -> price && target -> total != 0) {
-        if (target -> total >= orders -> total) {
-           // adjust total down by adjusting quantity down and recalculating total
-           target -> quantity -= orders -> quantity;
-           printf("%s has bought %.2lf @ $%.2lf from %s\n", target -> username, orders -> quantity, orders -> price, orders -> username);
-           target -> total = target -> quantity * target -> price;
-        }
-        else {
-            target -> quantity -= target -> total / orders -> price;
-            if (target -> quantity < 0) {
-                printf("Error, quantity is %lf\n", target -> quantity);
+	if (strcmp(target -> type, "buy") == 0) {
+        while (orders != NULL && target -> price >= orders -> price && target -> total != 0) {
+            if (target -> quantity >= orders -> quantity) {
+                // adjust total down by adjusting quantity down and recalculating total
+                target -> quantity -= orders -> quantity;
+                printf("%s has bought %.2lf @ $%.2lf from %s\n", target -> username, orders -> quantity, orders -> price, orders -> username);
+                target -> total = target -> quantity * target -> price;
             }
-            printf("%s has bought %lf @ $%lf from %s", target -> username, orders -> quantity, orders -> price, orders -> username);
-            target -> total = 0;
-            break;
+            else {
+                orders -> quantity -= target -> quantity;
+                printf("%s has bought %.2lf @ $%.2lf from %s\n", target -> username, target -> quantity, orders -> price, orders -> username);
+                target -> quantity = 0;
+                target -> total = 0;
+                break;
+            }
+            p = orders;
+	        orders = orders -> next;
+	        free(p);
         }
-        
-        // clear after done
-		p = orders;
-		orders = orders -> next;
-		free(p);
+    }
+    else {
+        while (orders != NULL && target -> price <= orders -> price && target -> total != 0) {
+            if (target -> quantity >= orders -> quantity) {
+            // adjust total down by adjusting quantity down and recalculating total
+                target -> quantity -= orders -> quantity;
+                printf("%s has sold %.2lf @ $%.2lf to %s\n", target -> username, orders -> quantity, orders -> price, orders -> username);
+                target -> total = target -> quantity * target -> price;
+            }
+            else {
+                orders -> quantity -= target -> quantity;
+                printf("%s has sold %.2lf @ $%.2lf to %s\n", target -> username, target -> quantity, orders -> price, orders -> username);
+                target -> quantity = 0;
+                target -> total = 0;
+                break;
+            }
+    	    p = orders;
+	        orders = orders -> next;
+	        free(p);
+        }
 	}
     return orders;
 }
 
-void print_all_orders(struct orders *orders) {
+void print_all_orders(struct orders *orders, char *type) {
     struct orders *p;
     printf("\n");
     if (orders == NULL) {
-        printf("No orders found");
+        printf("%s orders not found", type);
         return;
     }
+    printf("%s Orders:\n", type);
     printf("|--------------------------------------|---------|------------|-----------|\n");
 	printf("| Username                             |  Price  |  Quantity  |   Total   |\n");
 	printf("|--------------------------------------|---------|------------|-----------|\n");
